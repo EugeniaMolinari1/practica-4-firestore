@@ -5,9 +5,8 @@ export default function HomePage() {
     <section>
       <h1>Bienvenidos al Catálogo de Cursos</h1>
       <p className="lead">
-        Esta app es el punto de partida de la práctica. No vas a programar features: vas a
-        construir el <strong>camino a producción</strong> (pipeline, entornos de preview,
-        rollback) y a <strong>endurecer la seguridad</strong> de lo que se sirve.
+        Explorá el catálogo de cursos y leé las <strong>reseñas</strong> de otras personas. Si
+        ingresás con tu cuenta, podés publicar, editar o eliminar tu propia reseña de cada curso.
       </p>
 
       {/*

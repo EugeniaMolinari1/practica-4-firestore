@@ -1,0 +1,47 @@
+# Evidencia de fallo deliberado - regla temporal: puntaje <= 6 (firestore.rules, linea 16)
+# Fecha: 2026-10-30 11:41:46
+# Comando: firebase emulators:exec --only firestore "node --test tests/reglas.test.mjs" (emulador en puerto 8099 por tener el 8080 ocupado)
+
+i  emulators: Starting emulators: firestore
+i  emulators: Detected demo project ID "demo-practica-4-firestore", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
++  firestore: Firestore Emulator was started in standard edition.
++  firestore: Firestore Emulator UI websocket is running on 9151.
+i  Running script: node --test tests/reglas.test.mjs
+▶ reglas de Firestore: reseñas
+  ✔ 1. un usuario anónimo puede leer reseñas (607.7963ms)
+  ✔ 2. un usuario autenticado puede crear su propia reseña (138.1677ms)
+  ✔ 3. un usuario no puede crear una reseña con el UID de otro (58.1253ms)
+  ✔ 4. un usuario anónimo no puede escribir (59.9675ms)
+  ✖ 5. se rechazan puntajes inválidos (0, 6, decimal y texto) (75.9619ms)
+  ✔ 6. se rechazan campos adicionales (33.8999ms)
+  ✔ 7. creadaEn está protegido: no se acepta un valor del cliente ni se puede modificar (116.0914ms)
+  ✔ 8. nadie puede escribir documentos de cursos (41.5161ms)
+✖ reglas de Firestore: reseñas (1976.7633ms)
+ℹ tests 8
+ℹ suites 1
+ℹ pass 7
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2260.8031
+
+✖ failing tests:
+
+test at tests\reglas.test.mjs:63:3
+✖ 5. se rechazan puntajes inválidos (0, 6, decimal y texto) (75.9619ms)
+  Error: Expected request to fail, but it succeeded.
+      at file:///C:/Users/eugen/Desktop/Facultad%203%C2%B0%20a%C3%B1o/Programacion_avanzada/practica-4-firestore/node_modules/@firebase/rules-unit-testing/dist/esm/index.esm.js:572:31
+      at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+      at async TestContext.<anonymous> (file:///C:/Users/eugen/Desktop/Facultad%203%C2%B0%20a%C3%B1o/Programacion_avanzada/practica-4-firestore/tests/reglas.test.mjs:66:7)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:974:7)
+!  Script exited unsuccessfully (code 1)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+!  Firestore Emulator has exited upon receiving signal: SIGINT
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+
+Error: Script "node --test tests/reglas.test.mjs" exited with code 1

@@ -7,7 +7,7 @@ const niveles: Array<Nivel | "todos"> = ["todos", "inicial", "intermedio", "avan
 
 interface Props {
   cursos: Curso[];
-  /** Contenido extra al pie de cada tarjeta (por ejemplo, el botón "Inscribirme"). */
+  /** Contenido extra al pie de cada tarjeta. */
   accion?: (curso: Curso) => ReactNode;
 }
 

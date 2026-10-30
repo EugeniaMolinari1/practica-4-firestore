@@ -5,7 +5,7 @@ import AuthPanel from "./components/AuthPanel";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Catálogo de Cursos | Práctica CI/CD",
+  title: "Catálogo de Cursos | Práctica 4 · Cloud Firestore",
   description: "App de ejemplo para la práctica de despliegue continuo con Firebase Hosting.",
 };
 
@@ -20,7 +20,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <nav>
             <Link href="/">Inicio</Link>
             <Link href="/cursos">Cursos</Link>
-            <Link href="/mis-inscripciones">Mis inscripciones</Link>
             <AuthPanel />
           </nav>
         </header>

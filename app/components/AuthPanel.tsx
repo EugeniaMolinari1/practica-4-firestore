@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, updateProfile } from "firebase/auth";
 import { firebase, USA_EMULADORES } from "@/lib/firebase";
-import { mensajeDeError, registrarAlumno } from "@/lib/sqlconnect";
+import { mensajeDeError } from "@/lib/errores";
 import { useUsuario } from "@/lib/useUsuario";
 
 export default function AuthPanel() {
@@ -38,7 +38,6 @@ export default function AuthPanel() {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(cred.user, { displayName: nombre });
         await cred.user.getIdToken(true); // token nuevo con el email incluido
-        await registrarAlumno(nombre); // crea la fila en la tabla Alumno
       } else {
         await signInWithEmailAndPassword(auth, email, password);
       }

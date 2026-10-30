@@ -1,0 +1,28 @@
+﻿
+> practica-firebase-cicd@1.0.0 atacar
+> node scripts/atacar.mjs
+
+
+Auditor├¡a de SQL Connect ┬À proyecto clase-2-lunes ┬À emuladores locales
+
+[32mÔ£ö[0m ListCursos responde sin login (7 cursos) ÔÇö p├║blico por dise├▒o
+[31mÔ£ÿ[0m ListAlumnos devuelve datos personales SIN login
+[90m    Ejemplo filtrado: {"email":"ana@ejemplo.test","id":"seed-uid-ana","nombre":"Ana Ficticia"}[0m
+node.exe : [2026-10-29T22:36:28.014Z]  @firebase/data-connect: DataConnect (13.1.0): Error while 
+performing request: {"code":5,"message":"operation \"Inscribirme\" not found","details":[]}
+En línea: 1 Carácter: 1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ([2026-10-29T22:...","details":[]}:String) [], RemoteExc 
+   eption
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+[33mÔÇª[0m Inscribirme todav├¡a no existe (TODO L2)
+[90m    operation "Inscribirme" not found[0m
+[2026-10-29T22:36:28.096Z]  @firebase/data-connect: DataConnect (13.1.0): Error while performing 
+request: {"code":5,"message":"operation \"Inscribirme\" not found","details":[]}
+[33mÔÇª[0m No se pudo inscribir al usuario A: no se pueden probar los controles de aislamiento
+[90m    operation "Inscribirme" not found[0m
+[31m
+ÔØî 1 vulnerabilidad(es) ┬À 2 pendiente(s)
+[0m

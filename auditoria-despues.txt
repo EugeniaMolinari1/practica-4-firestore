@@ -1,0 +1,21 @@
+
+> practica-firebase-cicd@1.0.0 atacar
+> node scripts/atacar.mjs
+
+
+Auditoría de SQL Connect · proyecto clase-2-lunes · emuladores locales
+
+✔ ListCursos responde sin login (7 cursos) — público por diseño
+[2026-10-29T23:38:01.822Z]  @firebase/data-connect: DataConnect (13.1.0): Error while performing request: {"code":7,"message":"unauthorized: you are not authorized to perform this operation","details":[{"@type":"type.googleapis.com/google.firebase.dataconnect.http.GraphqlError","message":"@auth rejected the request","locations":[],"path":null,"extensions":{"file":"","code":"PERMISSION_DENIED","debugDetails":"@auth(level: NO_ACCESS) always reject non-admin requests","resource":"","warningLevel":"WARNING_LEVEL_UNKNOWN","workarounds":[]}}]}
+✔ ListAlumnos rechazada para un cliente
+    unauthorized: you are not authorized to perform this operation
+[2026-10-29T23:38:01.836Z]  @firebase/data-connect: DataConnect (13.1.0): Error while performing request: {"code":16,"message":"unauthenticated: this operation requires a signed-in user","details":[{"@type":"type.googleapis.com/google.firebase.dataconnect.http.GraphqlError","message":"@auth rejected the request","locations":[],"path":null,"extensions":{"file":"","code":"UNAUTHENTICATED","debugDetails":"@auth(level: USER) requires a signed-in user","resource":"","warningLevel":"WARNING_LEVEL_UNKNOWN","workarounds":[]}}]}
+✔ Inscribirme rechazada sin login
+    unauthenticated: this operation requires a signed-in user
+✔ Inscribirme es idempotente (repetir no falla)
+✔ MisInscripciones solo devuelve lo del usuario que llama
+[2026-10-29T23:38:02.024Z]  @firebase/data-connect: DataConnect (13.1.0): Error while performing request: {"code":5,"message":"operation \"DarmeDeBaja\" not found","details":[]}
+… DarmeDeBaja todavía no existe (TODO L5, opcional)
+
+… Sin vulnerabilidades detectadas, 1 control(es) pendiente(s)
+

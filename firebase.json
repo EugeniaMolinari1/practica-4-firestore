@@ -4,8 +4,7 @@
                     "cleanUrls":  true,
                     "trailingSlash":  false,
                     "rewrites":  [
-                                   { "source":  "/cursos/__next.cursos.__PAGE__.txt", "destination":  "/cursos/__next.cursos/__PAGE__.txt" },
-                                   { "source":  "/mis-inscripciones/__next.mis-inscripciones.__PAGE__.txt", "destination":  "/mis-inscripciones/__next.mis-inscripciones/__PAGE__.txt" }
+                                   { "source":  "/cursos/__next.cursos.__PAGE__.txt", "destination":  "/cursos/__next.cursos/__PAGE__.txt" }
                                ],
                     "ignore":  [
                                    "firebase.json",
@@ -38,7 +37,7 @@
                                                         },
                                                         {
                                                             "key":  "Content-Security-Policy",
-                                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 \u0027unsafe-inline\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; img-src \u0027self\u0027 https://picsum.photos https://fastly.picsum.photos data:; connect-src \u0027self\u0027 https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebasedataconnect.googleapis.com; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027"
+                                                            "value":  "default-src \u0027self\u0027; script-src \u0027self\u0027 \u0027unsafe-inline\u0027; style-src \u0027self\u0027 \u0027unsafe-inline\u0027; img-src \u0027self\u0027 https://picsum.photos https://fastly.picsum.photos data:; connect-src \u0027self\u0027 https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com; object-src \u0027none\u0027; base-uri \u0027self\u0027; form-action \u0027self\u0027; frame-ancestors \u0027none\u0027"
                                                         }
                                                     ]
                                     },
@@ -62,6 +61,10 @@
                                     }
                                 ]
                 },
+    "firestore":  {
+                      "rules":  "firestore.rules",
+                      "indexes":  "firestore.indexes.json"
+                  },
     "dataconnect":  {
                         "source":  "dataconnect"
                     },
@@ -70,9 +73,9 @@
                                  "port":  4000,
                                  "enabled":  true
                              },
-                      "dataconnect":  {
-                                          "port":  9399
-                                      },
+                      "firestore":  {
+                                         "port":  8080
+                                     },
                       "auth":  {
                                    "port":  9099
                                }

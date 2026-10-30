@@ -124,3 +124,100 @@ Ambas auditorías se ejecutaron contra los **emuladores locales** (Authenticatio
 - La operación opcional `DarmeDeBaja` (L5) no se implementó; por eso ese control figura como pendiente y la interfaz no ofrece la opción de darse de baja.
 - La auditoría `atacar` se ejecutó solo contra emuladores, no contra el servicio desplegado.
 - No se configuró App Check (sección 4).
+
+---
+
+## Práctica 4 · Firestore
+
+**Proyecto Firebase:** `practica-4-firestore` · modelo `cursos/{cursoId}/resenas/{uid}` · reglas en `firestore.rules` · tests en `tests/reglas.test.mjs`.
+
+En esta práctica el catálogo pasó a ser local (`lib/cursos.ts`) y las reseñas se guardan en Cloud Firestore. Las secciones 1 a 7 de arriba corresponden al caso práctico anterior (SQL Connect), cuyos archivos se conservan solo como referencia.
+
+### 1. ¿Por qué utilizar el UID como identificador del documento de reseña en lugar de un ID aleatorio?
+
+Porque el ID del documento hace cumplir la regla de negocio "una reseña por usuario y curso" sin código adicional. Con la ruta `cursos/{cursoId}/resenas/{uid}`, un segundo intento de reseñar el mismo curso apunta al mismo documento, de modo que solo puede reemplazarlo o editarlo; no puede duplicarlo.
+
+Con IDs aleatorios (`addDoc`) habría que guardar el UID dentro del documento y evitar duplicados por otro medio. Las reglas de seguridad no pueden, de forma confiable, verificar que "no existe otra reseña de este usuario": habría que consultar con `exists()`/`get()` sobre una ruta conocida (que es justamente lo que da el UID como ID) o agregar un contador, y dos solicitudes simultáneas podrían pasar la verificación. Con el UID en la ruta, el duplicado es imposible por construcción.
+
+Otras ventajas:
+
+- La regla de propiedad es una comparación directa con la ruta: `request.auth.uid == uid`, sin leer el documento.
+- Editar, eliminar y cargar "mi reseña" son accesos directos por ruta (`doc(...)`), sin consultas ni índices.
+- `crearResena` (`setDoc`) y `editarResena` (`updateDoc`) operan sobre un destino conocido de antemano.
+
+El costo es que el UID de cada autor queda visible en la ruta del documento. No es un secreto (no permite autenticarse), pero es información que se publica; y solo se admite una reseña por usuario y curso, que es lo que pide la consigna.
+
+### 2. ¿Por qué guardar el nombre del autor dentro de la reseña?
+
+Firestore no tiene *joins*. Para mostrar "quién escribió esta reseña" habría que leer otro documento por cada reseña (un perfil de usuario), lo que multiplica las lecturas y la latencia (20 reseñas serían 20 lecturas más). Además, los datos de Authentication no son legibles por otros clientes, y exponer una colección de perfiles públicos sería publicar más datos de los necesarios. Copiar el nombre dentro de la reseña (desnormalización) permite mostrar la lista con una sola consulta, que es el patrón habitual en modelos documentales: se optimiza para la lectura, que es la operación más frecuente.
+
+Costos de esta decisión:
+
+- Si el usuario cambia su nombre, las reseñas viejas conservan el anterior, salvo que se actualicen.
+- `autor` lo envía el cliente. Las reglas actuales solo validan que sea un texto de hasta 80 caracteres; no comprueban que coincida con el nombre de la cuenta. Un usuario modificando el cliente podría escribir cualquier nombre. Para endurecerlo habría que comparar contra `request.auth.token.name`, algo que no se implementó porque excede la consigna.
+- Se guarda el nombre, no el correo, para no publicar un dato personal innecesario.
+
+### 3. ¿Qué diferencia hay entre `resource.data` y `request.resource.data` en las reglas?
+
+- `resource.data` es el documento **tal como está guardado ahora**, antes de la operación. No existe al crear (el documento todavía no está).
+- `request.resource.data` es el documento **tal como quedaría después** de la operación, es decir, lo que se intenta escribir. En una actualización parcial (`updateDoc`) incluye también los campos que no se tocaron, ya combinados. No existe al eliminar.
+
+En `firestore.rules` se usan así:
+
+- Al crear y actualizar, `datosValidos(request.resource.data)` valida el resultado final: campos permitidos, tipos, puntaje entre 1 y 5 y longitudes. Se valida lo que quedará guardado, no lo que viaja en la solicitud.
+- Al crear: `request.resource.data.creadaEn == request.time`.
+- Al actualizar: `request.resource.data.creadaEn == resource.data.creadaEn`. Solo se puede expresar comparando el valor nuevo con el valor guardado, y por eso se necesitan los dos objetos. Es lo que impide modificar `creadaEn` (test 7).
+
+### 4. ¿Por qué validar `creadaEn` con `request.time` y no confiar en el reloj del cliente?
+
+El reloj del cliente lo controla el usuario: puede estar mal configurado o manipularse a propósito. Si se aceptara una fecha enviada por el cliente, se podría falsificar la antigüedad de una reseña, por ejemplo poniéndole una fecha futura para quedar siempre primero en la lista, que ordena por `creadaEn` descendente y muestra solo las últimas 20.
+
+`request.time` es la hora del servidor en el momento de la solicitud. El cliente escribe `serverTimestamp()`, un marcador que el servidor reemplaza por su propia hora, y la regla exige `creadaEn == request.time`. Así, el único valor aceptable es el que fijó el servidor. El test 7 lo comprueba: un `Timestamp` elegido por el cliente es rechazado. Para que el valor no se pueda reescribir después, la regla de actualización exige que `creadaEn` no cambie.
+
+Mientras el servidor no confirma, la interfaz usa una estimación local solo para mostrar la reseña (`serverTimestamps: "estimate"`); el valor guardado es siempre el del servidor.
+
+### 5. ¿Qué limitaciones tienen las consultas de agregación de Firestore y qué alternativas existen?
+
+Las consultas de agregación (`count()`, `sum()`, `average()`) calculan en el servidor sin descargar los documentos, y es lo que usa `obtenerEstadisticas`. Limitaciones:
+
+- **Pocas operaciones:** solo cuenta, suma y promedio. No hay mínimo, máximo, mediana ni agrupar por un campo (el equivalente a `GROUP BY`).
+- **Una consulta sobre una colección:** no hay uniones entre colecciones. El promedio se calcula sobre una sola consulta, por lo que hay que ejecutar una por curso.
+- **Costo y tiempo proporcionales al volumen:** el servidor debe recorrer las entradas de índice que coinciden con la consulta, y por eso la operación se factura según esa cantidad (las tarifas exactas figuran en la documentación oficial de precios de Firestore y no se detallan acá). Cuantas más reseñas tenga un curso, más trabajo implica cada cálculo; recalcular el promedio en cada cambio se vuelve cada vez más costoso.
+- **Se ejecutan en el servidor, no en tiempo real:** no existe un `onSnapshot` para agregaciones. Por eso `ResenasCurso.tsx` vuelve a pedirlas cada vez que el servidor confirma un cambio en la lista, y requieren conexión.
+- **Dependen de los índices** cuando se combinan con filtros.
+- Con documentos que no tienen el campo numérico, `average()` los ignora, y devuelve `null` si no hay ninguno.
+
+Alternativas:
+
+- **Contadores y acumulados guardados:** mantener en el documento del curso `cantidad` y `sumaPuntajes`, actualizados en una transacción o con una Cloud Function al escribir una reseña. La lectura pasa a costar un documento, aunque aparecen riesgos de consistencia y un límite de escrituras sostenidas sobre un mismo documento (para lo cual existen los contadores distribuidos). Esto no se implementó porque la consigna excluye las Cloud Functions.
+- **Exportar a BigQuery** (extensión de Firebase) para análisis complejos, con la demora propia de un proceso por lotes.
+- **Una base relacional (SQL Connect):** para agrupar, promediar por categoría o unir tablas, SQL es la herramienta natural.
+
+### 6. ¿Por qué las inscripciones con cupos limitados son más apropiadas para SQL Connect que para este modelo documental de Firestore?
+
+Una inscripción con cupo tiene reglas que cruzan varios registros: que un alumno no se inscriba dos veces al mismo curso, que el curso exista y que la cantidad de inscriptos no supere el cupo, incluso cuando muchas personas se inscriben a la vez. Eso es integridad relacional y consistencia transaccional, que es lo que PostgreSQL ofrece de forma nativa:
+
+- **Claves y restricciones:** la clave primaria compuesta (`alumno`, `curso`) de `Matricula` y las claves foráneas las garantiza la base de datos (ver sección 3 del caso anterior).
+- **Transacciones entre tablas:** contar las matrículas del curso e insertar una nueva puede hacerse como una unidad atómica.
+- **Consultas con uniones y agregación:** "mis inscripciones" y "cuántos inscriptos tiene el curso" son un `JOIN` y un `COUNT`.
+
+En Firestore se puede aproximar, pero con más esfuerzo y más riesgo:
+
+- Las reglas de seguridad no pueden contar documentos, así que un cupo solo se hace cumplir manteniendo un contador aparte y actualizándolo en una transacción junto con la inscripción.
+- Ese contador es un único documento muy disputado en los cursos populares, y Firestore limita la frecuencia de escrituras sostenidas sobre un mismo documento.
+- Para ver las inscripciones de un alumno y las de un curso hay que duplicar datos (o usar consultas de grupo de colecciones) y mantener ambas copias coherentes.
+- No hay claves foráneas: nada impide una inscripción a un curso inexistente salvo que lo valide cada regla.
+
+Las reseñas, en cambio, encajan bien en el modelo documental: cada una es independiente, pertenece a un usuario, se lee mucho más de lo que se escribe, se ordena por fecha y no compite por un recurso limitado. En el caso práctico anterior, el control de cupo no se llegó a implementar; el argumento es sobre qué modelo lo expresa mejor, no sobre algo ya resuelto.
+
+### Verificaciones de esta práctica
+
+- 8 de 8 tests de reglas aprobados (`npm run test:reglas`).
+- Fallo deliberado: con la regla temporal `puntaje <= 6` falla el test 5 (puntajes inválidos); la salida está en `evidencias/fallo-deliberado-puntaje-6.txt`. Se restauró `puntaje <= 5` y volvieron a pasar los 8.
+- Comprobación manual con los emuladores: crear, editar y eliminar reseñas, y actualización en tiempo real entre dos navegadores.
+
+### Limitaciones
+
+- Las reglas y el índice se probaron solo en el emulador; no se publicaron en el proyecto real desde esta rama.
+- `autor` no se verifica contra el token de Authentication (sección 2).
+- No se configuró App Check ni se implementaron Cloud Functions, moderación o paginación adicional.

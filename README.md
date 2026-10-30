@@ -1,137 +1,160 @@
-# Catálogo de Cursos · Prácticas de Programación Avanzada
+# Catálogo de Cursos · Práctica 4: Cloud Firestore
 
-Next.js (export estático) + **Firebase** en plan **Spark** (sin tarjeta de crédito).
-El mismo repo evoluciona clase a clase:
+Programación Avanzada — 2026. Aplicación **Next.js** (export estático) con **Firebase Authentication**
+y **Cloud Firestore**: el catálogo de siete cursos es local y los usuarios autenticados publican **reseñas**
+de cada curso, que se actualizan en tiempo real.
 
-| Clase | Tema | Estado de este repo |
-|---|---|---|
-| 1 | CI/CD con Firebase Hosting, preview channels y headers de seguridad | ✅ resuelta (incluida) |
-| 2 · lunes | **SQL Connect**: PostgreSQL detrás de una API con autorización | ⬅️ **punto de partida** |
-| 3 · viernes | Analytics: plan de medición, consentimiento y SQL en BigQuery | próximamente |
+> El enunciado y la rúbrica están en el documento de la práctica. Este README es la guía técnica rápida.
+> Las respuestas de reflexión están en [REFLEXION.md](REFLEXION.md).
 
-> El enunciado, el cronograma y la rúbrica están en el documento de cada práctica.
-> Este README es la guía técnica rápida.
+## Qué hace la aplicación
 
----
+- **Catálogo** (`/cursos`): los 7 cursos viven en `lib/cursos.ts`, con los mismos UUID y datos que
+  `dataconnect/seed_data.gql`. Se pueden filtrar por título y por nivel.
+- **Cuentas**: registro, inicio y cierre de sesión con correo y contraseña (Firebase Authentication).
+- **Reseñas** (botón *Ver reseñas* en cada curso):
+  - Lectura pública; solo los usuarios autenticados pueden publicar, editar o eliminar **su propia** reseña.
+  - Una reseña por usuario y curso. Se muestran las últimas 20, de la más nueva a la más antigua,
+    con filtro de 5 estrellas.
+  - Cantidad y promedio calculados en el servidor con `count()` y `average()`.
+  - Actualización en tiempo real con `onSnapshot`.
 
-## Arquitectura (clase 2)
+## Requisitos de la práctica
 
-```
- Navegador (Next.js estático)
-   │  Firebase Auth (email/contraseña) ──────────▶ token con auth.uid y auth.token.email
-   │
-   │  executeQuery("ListCursos")  ┐
-   │  executeMutation("Inscribirme", { cursoId })  ┘  solo NOMBRE + variables, nunca SQL
-   ▼
- SQL Connect ── conector "cursos" (dataconnect/cursos/*.gql) ── @auth decide quién ejecuta qué
-   ▼
- PostgreSQL (Cloud SQL, prueba sin costo 90 días)   ·   en desarrollo: emulador local (PGlite)
-```
-
-| Pieza | Rol |
+| Requisito | Dónde está |
 |---|---|
-| `dataconnect/schema/schema.gql` | Tablas: `Curso`, `Alumno` y **`Matricula` (la completás vos)** |
-| `dataconnect/cursos/queries.gql` · `mutations.gql` | Operaciones expuestas a la app — **con TODOs** |
-| `dataconnect/seed_data.gql` | Datos iniciales (cursos y dos alumnos ficticios) |
-| `lib/firebase.ts` | Inicializa Firebase; en `npm run dev` usa los **emuladores** |
-| `lib/sqlconnect.ts` | Llama a las operaciones por nombre (ya escrito) |
-| `scripts/atacar.mjs` | Auditoría: se comporta como un atacante y prueba tus reglas `@auth` |
+| Modelo `cursos/{cursoId}/resenas/{uid}` con `puntaje` (entero 1–5), `texto` (≤ 500), `autor` (≤ 80) y `creadaEn` (timestamp del servidor) | `lib/resenas.ts`, `firestore.rules` |
+| Crear, editar (sin tocar `creadaEn`) y eliminar la propia reseña; escucha en tiempo real; últimas 20; filtro de 5 estrellas; cantidad y promedio | `lib/resenas.ts` |
+| Interfaz de reseñas integrada al catálogo | `app/components/ResenasCurso.tsx`, `app/components/Catalogo.tsx` |
+| Reglas de seguridad | `firestore.rules` |
+| 8 tests de reglas con `@firebase/rules-unit-testing` y `node:test` | `tests/reglas.test.mjs` |
+| Índice compuesto `puntaje ASC` + `creadaEn DESC` | `firestore.indexes.json` |
+| Firestore y su emulador (puerto 8080) en la configuración | `firebase.json` |
+| Evidencia de fallo deliberado (regla temporal con puntaje máximo 6) | `evidencias/fallo-deliberado-puntaje-6.txt` |
 
----
+## Tecnologías
 
-## Si venís de la clase 1 (tu propio repo)
+Next.js 16 · React 19 · TypeScript · Firebase JS SDK 13 (`firebase/auth`, `firebase/firestore`) ·
+Firebase Hosting · Firebase Emulator Suite · `@firebase/rules-unit-testing` · `node:test`.
 
-1. Commiteá todo lo que tengas.
-2. Copiá **sobre tu repo** el contenido de este, **excepto** `.github/`, `.firebaserc` y `firebase.json`
-   (esos ya los tenés configurados con tu proyecto).
-3. En **tu** `firebase.json`, agregá estas dos claves al mismo nivel que `"hosting"`:
-   ```json
-   "dataconnect": { "source": "dataconnect" },
-   "emulators": {
-     "auth": { "port": 9099 },
-     "dataconnect": { "port": 9399, "dataDir": "dataconnect/.dataconnect/pgliteData" },
-     "hosting": { "port": 5000 },
-     "ui": { "enabled": true },
-     "singleProjectMode": true
-   }
-   ```
-4. `npm install`
+## Configuración
 
-## Preparación previa (antes del lunes, ~20 min)
+1. **Node.js 20 o superior** y **Java (JDK)**: el emulador de Firestore corre sobre Java.
+2. `npm install`
+3. Proyecto Firebase `practica-4-firestore` (ya referenciado en `.firebaserc`) con:
+   - **Authentication** con *Correo electrónico/contraseña* habilitado.
+   - **Cloud Firestore** creado.
+4. `lib/firebase-config.ts` contiene la configuración web del proyecto (`apiKey`, `authDomain`, `projectId`,
+   `appId`). Se obtiene en la consola: *Configuración del proyecto → Tus apps → App web*. Estos valores
+   no son secretos; la seguridad la dan Authentication y `firestore.rules`.
 
-1. Consola de Firebase → **Authentication** → *Comenzar* → *Sign-in method* → habilitá
-   **Correo electrónico/contraseña**.
-2. Consola → ⚙ *Configuración del proyecto* → *Tus apps* → si no hay una **app web**, creala
-   (ícono `</>`). Copiá `apiKey`, `authDomain`, `projectId` y `appId` en `lib/firebase-config.ts`.
-3. Verificá que los emuladores arrancan (la primera vez descargan el emulador de SQL Connect):
-   ```bash
-   npm run emulators
-   ```
-   Tiene que mostrar *All emulators ready* con Auth en 9099 y SQL Connect en 9399.
-   La interfaz de los emuladores queda en <http://127.0.0.1:4000>.
-4. En otra terminal: `npm run seed` y luego `npm run dev` → abrí <http://localhost:3000/cursos>:
-   tienen que aparecer 7 cursos leídos desde PostgreSQL.
+## Ejecutar la aplicación en local
 
-> **Recomendado:** instalá la extensión **Firebase** de VS Code. Valida los `.gql` mientras
-> escribís (autocompleta campos como `alumnoId_expr`) y permite ejecutar operaciones contra el
-> emulador con un click.
-
----
-
-## Durante la clase · flujo de trabajo
-
-Tres terminales:
+En `npm run dev` la app se conecta a los **emuladores** (Auth en `127.0.0.1:9099`, Firestore en
+`127.0.0.1:8080`), no al proyecto real. Se necesitan dos terminales:
 
 ```bash
-npm run emulators     # 1 · Auth + SQL Connect locales
+npm run emulators     # 1 · Auth + Firestore locales (interfaz en http://127.0.0.1:4000)
 npm run dev           # 2 · la app en http://localhost:3000
-npm run atacar        # 3 · auditoría de seguridad (repetila después de cada cambio)
 ```
 
-| TODO | Dónde | Qué |
-|---|---|---|
-| L1 | `schema.gql` | Tabla `Matricula` (muchos-a-muchos, clave compuesta, fecha del servidor) |
-| L2 | `mutations.gql` | `Inscribirme($cursoId)` · solo usuarios, idempotente, sin elegir alumno |
-| L3 | `queries.gql` | `MisInscripciones` · solo las del usuario que llama |
-| L4 | `queries.gql` | Auditar y corregir `ListAlumnos` |
-| L5 *(opcional)* | `mutations.gql` | `DarmeDeBaja($cursoId)` |
-| L6 | `firebase.json` | CSP: permitir que la app de producción hable con Auth y SQL Connect |
-| L7 | consola | Deploy de SQL Connect a producción (prueba sin costo) |
+En el emulador de Auth cualquier correo sirve y los datos se pierden al cerrar los emuladores.
+El build de producción (`npm run build`) habla con los servicios reales.
 
-Después de editar un `.gql`, mirá la terminal de los emuladores: ahí aparecen los errores de
-compilación del esquema. Si no toma los cambios, reiniciá `npm run emulators`. Si cambiaste el
-esquema y se queja de datos viejos, borrá `dataconnect/.dataconnect/` y volvé a correr `npm run seed`.
-
-### Deploy a producción (L7)
+## Tests de reglas de seguridad
 
 ```bash
-npx firebase deploy --only dataconnect     # la 1.ª vez crea la instancia Cloud SQL de prueba
-npx firebase dataconnect:execute dataconnect/seed_data.gql   # datos iniciales en producción
+npm run test:reglas
 ```
 
-La creación de la instancia tarda varios minutos; mientras tanto SQL Connect guarda los
-datos en una base temporal y los migra al terminar. Después, el frontend se publica como
-siempre: **por Pull Request** (tu pipeline de la clase 1).
+Levanta solo el emulador de Firestore con un proyecto ficticio (`demo-practica-4-firestore`), ejecuta
+`tests/reglas.test.mjs` y apaga el emulador. No toca recursos reales. Cubre estos 8 escenarios:
 
----
+1. Un usuario anónimo puede leer reseñas.
+2. Un usuario autenticado puede crear su propia reseña.
+3. No se puede crear una reseña con el UID de otro usuario.
+4. Un usuario anónimo no puede escribir.
+5. Se rechazan puntajes inválidos (0, 6, decimal y texto).
+6. Se rechazan campos adicionales.
+7. `creadaEn` está protegido (no se acepta un valor del cliente ni se puede modificar).
+8. Nadie puede escribir documentos de cursos.
+
+> El emulador usa el puerto 8080. Si ya tenés `npm run emulators` corriendo, cerralo antes de ejecutar
+> los tests, o fallarán con *port taken*.
+
+La carpeta [evidencias/](evidencias/) guarda la salida de un fallo deliberado: con la regla temporal
+`puntaje <= 6`, el test 5 falla; al restaurar `puntaje <= 5` pasan los 8.
 
 ## Comandos
 
+Todos los scripts de `package.json`:
+
 | Comando | Para qué |
 |---|---|
-| `npm run emulators` | Emuladores de Auth y SQL Connect (+ UI en :4000) |
-| `npm run seed` | Carga `seed_data.gql` en el emulador (privilegios de admin) |
-| `npm run atacar` | Auditoría de seguridad de las operaciones contra el emulador |
 | `npm run dev` | App en modo desarrollo, conectada a los emuladores |
-| `npm run build` · `npm run serve` | Build de producción + emulador de Hosting con headers |
-| `node scripts/check-headers.mjs <URL>` | Verifica headers de seguridad y caché |
-| `npx firebase dataconnect:sql:diff` | Diferencias entre tu esquema y la base de producción |
+| `npm run emulators` | Emuladores de Auth y Firestore (+ interfaz en :4000) |
+| `npm run test:reglas` | Tests de `firestore.rules` contra el emulador |
+| `npm run typecheck` | Verificación de tipos con TypeScript |
+| `npm run build` | Build de producción (export estático en `out/`) |
+| `npm run serve` | Emulador de Hosting para ver `out/` con los headers de seguridad |
+| `npm run deploy:preview` | Publica un canal de preview de Hosting (vence en 1 día) |
+| `node scripts/check-headers.mjs <URL>` | Verifica headers de seguridad y caché de un sitio publicado |
+
+Scripts heredados de la práctica anterior (`npm run seed`, `npm run atacar`): requieren el emulador de
+SQL Connect, que **ya no** se levanta con `npm run emulators`. **No forman parte del flujo de esta práctica.**
+
+## Publicar reglas e índices
+
+Las reglas (`firestore.rules`) y el índice (`firestore.indexes.json`) deben estar publicados en el proyecto
+real para que la app desplegada pueda leer y filtrar reseñas. Como `firebase.json` conserva el bloque de
+Data Connect de la práctica anterior, conviene publicar por servicio y no con un `deploy` completo:
+
+```bash
+npx firebase deploy --only firestore
+npx firebase deploy --only hosting
+```
+
+El índice compuesto tarda unos minutos en construirse; hasta entonces el filtro de 5 estrellas puede fallar.
+Los workflows de GitHub Actions están desactivados (carpeta `.github/workflows-desactivados/`).
+
+## Estructura del proyecto
+
+```
+app/
+  page.tsx · cursos/page.tsx · layout.tsx · globals.css
+  components/
+    AuthPanel.tsx        Registro e inicio de sesión (Firebase Auth)
+    Catalogo.tsx         Lista de cursos + botón "Ver reseñas"
+    FiltroCursos.tsx     Búsqueda por título y filtro por nivel
+    ResenasCurso.tsx     Reseñas de un curso (formulario, lista, estadísticas)
+lib/
+  cursos.ts              Catálogo local de 7 cursos
+  firebase.ts            Inicialización de Firebase y conexión a emuladores
+  firebase-config.ts     Configuración web del proyecto
+  resenas.ts             Operaciones de Firestore para reseñas
+  useUsuario.ts · errores.ts · build-info.ts
+firestore.rules          Reglas de seguridad
+firestore.indexes.json   Índice compuesto
+firebase.json            Hosting (headers y CSP), Firestore y emuladores
+tests/reglas.test.mjs    Tests de las reglas
+evidencias/              Salida del fallo deliberado
+scripts/check-headers.mjs  Verificación de headers
+```
+
+### Archivos de la práctica anterior (solo como referencia)
+
+Se conservan, pero **no forman parte del flujo activo de esta práctica** ni los usa la aplicación:
+
+- `dataconnect/` (esquema, conector y `seed_data.gql`) y `src/dataconnect-generated/` (SDK generado).
+- `scripts/seed.mjs` y `scripts/atacar.mjs`, y los informes `auditoria-antes.txt` y `auditoria-despues.txt`.
+- El bloque `dataconnect` de `firebase.json`.
 
 ## Problemas frecuentes
 
-- **"No hay conexión con los emuladores"**: falta `npm run emulators` en otra terminal.
-- **El catálogo dice que no puede cargar** en `npm run dev`: emuladores apagados o falta `npm run seed`.
-- **`operation not found` / `Inscribirme` no existe**: la operación todavía no está escrita, o el `.gql` tiene un error (mirá la terminal de los emuladores).
-- **`unauthenticated` al inscribirse**: no hay sesión iniciada (o la operación es `USER` y llamás sin login: ¡eso es lo correcto!).
-- **En producción el catálogo no carga y la consola dice `Refused to connect`**: falta L6 (CSP `connect-src`).
-- **Push de workflows rechazado** (*without workflow scope*): ver la preparación de la clase 1.
+- **`Port 8080 is not open` / `port taken`** al correr los emuladores o `test:reglas`: otro proceso usa el
+  puerto 8080 (por ejemplo, emuladores que quedaron abiertos).
+- **Las reseñas no cargan en `npm run dev`**: faltan los emuladores (`npm run emulators`).
+- **`Missing or insufficient permissions` en producción**: las reglas todavía no están publicadas.
+- **El filtro de 5 estrellas falla en producción con un error de índice**: el índice compuesto aún no
+  está construido o no se publicó.
+- **Java no encontrado** al iniciar el emulador: instalá un JDK.

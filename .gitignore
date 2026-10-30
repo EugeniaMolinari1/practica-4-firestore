@@ -13,6 +13,7 @@ firebase-debug.log
 firebase-debug.*.log
 dataconnect-debug.log
 ui-debug.log
+firestore-debug.log
 # datos locales del emulador de SQL Connect
 dataconnect/.dataconnect/
 
